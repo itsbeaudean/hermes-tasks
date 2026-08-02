@@ -4,6 +4,16 @@ A small, local task board for Hermes Desktop.
 
 It adds a **Tasks** page in the sidebar and a compact task count in the status bar. Tasks live in a normal Markdown file, so there is no account, hosted database, or separate task app to maintain.
 
+## Intentionally simple
+
+This is deliberately a small local plugin:
+
+- one `tasks.md` file is the source of truth
+- one JavaScript file adds the Hermes Desktop page and status item
+- one small Python backend reads and updates that Markdown file
+
+There is no account, sync service, database, or task format to migrate to. If you stop using the plugin, your tasks are still just a readable Markdown file.
+
 ![Hermes Desktop plugin](https://img.shields.io/badge/Hermes-Desktop%20plugin-6d5efc)
 
 ## What it does
