@@ -1,0 +1,7 @@
+{
+  "name": "tasks",
+  "label": "Tasks",
+  "description": "Local Markdown task board for Hermes Desktop.",
+  "version": "1.0.0",
+  "api": "plugin_api.py"
+}

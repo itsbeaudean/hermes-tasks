@@ -1,0 +1,4 @@
+name: tasks
+version: "1.0.0"
+description: "Local Markdown task board for Hermes Desktop."
+author: "Hermes Tasks contributors"
