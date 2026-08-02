@@ -35,6 +35,13 @@ class DesktopPluginTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_done_tasks_can_be_hidden_without_changing_the_active_filter(self):
+        source = PLUGIN_PATH.read_text(encoding="utf-8")
+
+        self.assertIn("const [hideDone, setHideDone] = useState(false)", source)
+        self.assertIn("if (hideDone && task.done) return false", source)
+        self.assertIn("'aria-label': 'Hide completed tasks'", source)
+
 
 if __name__ == "__main__":
     unittest.main()

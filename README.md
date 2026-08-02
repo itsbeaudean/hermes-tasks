@@ -62,7 +62,8 @@ Open **Tasks** from the Hermes Desktop sidebar. The small count in the status ba
 1. Type a concrete next action into the field at the top and select **Add**. New tasks start in **Now**.
 2. Tick a task to move it to **Done**. Untick it to return it to **Now**.
 3. Use the filters to show priority, work, or life tasks. Add `!`, `#work`, or `#life` to the task text to use those filters.
-4. Edit the Markdown file directly whenever you prefer. Refresh the Tasks page to reload it.
+4. Select **Hide done** to keep completed tasks out of the current view. It does not delete or change them.
+5. Edit the Markdown file directly whenever you prefer. Refresh the Tasks page to reload it.
 
 The plugin recognises these sections:
 

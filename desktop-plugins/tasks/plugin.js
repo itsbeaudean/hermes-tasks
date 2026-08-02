@@ -169,6 +169,7 @@ function TasksPage() {
   const boardQuery = useBoard()
   const [title, setTitle] = useState('')
   const [filter, setFilter] = useState('all')
+  const [hideDone, setHideDone] = useState(false)
   const [completingId, setCompletingId] = useState(null)
   const [demoSections, setDemoSections] = useState(freshDemoTasks)
 
@@ -225,6 +226,7 @@ function TasksPage() {
     ? { sections: demoSections, counts: countsFor(demoSections) }
     : boardQuery.data
   const matches = task => {
+    if (hideDone && task.done) return false
     if (filter === 'all' || demoMode) return true
     if (filter === 'priority') return task.priority && !task.done
     return task.area === filter
@@ -335,11 +337,24 @@ function TasksPage() {
                   })
                 ]
               }),
-          jsx(SegmentedControl, {
-            className: 'mt-3',
-            onChange: setFilter,
-            options: FILTERS,
-            value: filter
+          jsxs('div', {
+            className: 'mt-3 flex flex-wrap items-center gap-2',
+            children: [
+              jsx(SegmentedControl, {
+                onChange: setFilter,
+                options: FILTERS,
+                value: filter
+              }),
+              jsx(Button, {
+                'aria-label': 'Hide completed tasks',
+                'aria-pressed': hideDone,
+                onClick: () => setHideDone(current => !current),
+                size: 'xs',
+                type: 'button',
+                variant: 'ghost',
+                children: hideDone ? 'Done hidden' : 'Hide done'
+              })
+            ]
           })
         ]
       }),
