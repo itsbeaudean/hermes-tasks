@@ -31,6 +31,12 @@ There is no account, sync service, database, or task format to migrate to. If yo
 
 **Requirements:** Hermes Desktop and the Hermes CLI must already be installed.
 
+### Ask Hermes to install it
+
+If you use Hermes already, copy the prompt in [PROMPT.md](PROMPT.md) into a Hermes chat. It asks your agent to inspect the plugin, install it without overwriting an existing task file, verify the required files, and tell you exactly when to restart Desktop.
+
+### Install manually
+
 ```bash
 git clone https://github.com/itsbeaudean/hermes-tasks.git
 cd hermes-tasks
