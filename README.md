@@ -4,6 +4,8 @@ A small, local task board for Hermes Desktop.
 
 It adds a **Tasks** page in the sidebar and a compact task count in the status bar. Tasks live in a normal Markdown file, so there is no account, hosted database, or separate task app to maintain.
 
+![Hermes Tasks demo board](assets/tasks-demo.png)
+
 ## Intentionally simple
 
 This is deliberately a small local plugin:
