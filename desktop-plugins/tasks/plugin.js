@@ -26,48 +26,10 @@ const FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'priority', label: 'Priority' },
   { id: 'work', label: 'Work' },
-  { id: 'life', label: 'Life' },
-  { id: 'demo', label: 'Demo' }
+  { id: 'life', label: 'Life' }
 ]
 const SECTION_ORDER = ['Now', 'Waiting', 'Later', 'Done']
-const DEMO_TASKS = {
-  Now: [
-    { id: 'demo-1', title: 'Ship the native task dashboard #work !', done: false, priority: true, area: 'work', section: 'Now' },
-    { id: 'demo-2', title: 'Record a 30-second product walkthrough #work !', done: false, priority: true, area: 'work', section: 'Now' },
-    { id: 'demo-3', title: 'Review the launch checklist #work', done: false, priority: false, area: 'work', section: 'Now' },
-    { id: 'demo-4', title: 'Book a dentist appointment #life', done: false, priority: false, area: 'life', section: 'Now' },
-    { id: 'demo-5', title: 'Plan Sunday meal prep #life', done: false, priority: false, area: 'life', section: 'Now' }
-  ],
-  Waiting: [
-    { id: 'demo-6', title: 'Confirm design feedback #work', done: false, priority: false, area: 'work', section: 'Waiting' },
-    { id: 'demo-7', title: 'Waiting on travel dates #life', done: false, priority: false, area: 'life', section: 'Waiting' }
-  ],
-  Later: [
-    { id: 'demo-8', title: 'Build a simple weekly review ritual #life', done: false, priority: false, area: 'life', section: 'Later' },
-    { id: 'demo-9', title: 'Explore voice capture for quick tasks #work', done: false, priority: false, area: 'work', section: 'Later' }
-  ],
-  Done: [
-    { id: 'demo-10', title: 'Connect Hermes to the shared task file #work (completed 2026-08-02)', done: true, priority: false, area: 'work', section: 'Done' },
-    { id: 'demo-11', title: 'Clean up old reminders #life (completed 2026-08-02)', done: true, priority: false, area: 'life', section: 'Done' },
-    { id: 'demo-12', title: 'Set task priorities #work (completed 2026-08-01)', done: true, priority: false, area: 'work', section: 'Done' }
-  ]
-}
 let pluginContext = null
-
-function freshDemoTasks() {
-  return Object.fromEntries(
-    SECTION_ORDER.map(section => [section, DEMO_TASKS[section].map(task => ({ ...task }))])
-  )
-}
-
-function countsFor(sections) {
-  const tasks = SECTION_ORDER.flatMap(section => sections[section] || [])
-  return {
-    open: tasks.filter(task => !task.done).length,
-    priority: tasks.filter(task => !task.done && task.priority).length,
-    done: tasks.filter(task => task.done).length
-  }
-}
 
 function request(path, options) {
   if (!pluginContext) return Promise.reject(new Error('Tasks plugin is not ready'))
@@ -171,7 +133,6 @@ function TasksPage() {
   const [filter, setFilter] = useState('all')
   const [hideDone, setHideDone] = useState(false)
   const [completingId, setCompletingId] = useState(null)
-  const [demoSections, setDemoSections] = useState(freshDemoTasks)
 
   const addMutation = useMutation({
     mutationFn: nextTitle => request('/tasks', { method: 'POST', body: { title: nextTitle, section: 'Now' } }),
@@ -221,13 +182,10 @@ function TasksPage() {
     })
   }
 
-  const demoMode = filter === 'demo'
-  const board = demoMode
-    ? { sections: demoSections, counts: countsFor(demoSections) }
-    : boardQuery.data
+  const board = boardQuery.data
   const matches = task => {
     if (hideDone && task.done) return false
-    if (filter === 'all' || demoMode) return true
+    if (filter === 'all') return true
     if (filter === 'priority') return task.priority && !task.done
     return task.area === filter
   }
@@ -237,27 +195,7 @@ function TasksPage() {
   const visibleCount = Object.values(visible).reduce((total, tasks) => total + tasks.length, 0)
 
   const handleComplete = (id, done) => {
-    if (!demoMode) {
-      completeMutation.mutate({ id, done })
-      return
-    }
-    setDemoSections(current => {
-      const next = Object.fromEntries(
-        SECTION_ORDER.map(section => [section, current[section].filter(task => task.id !== id)])
-      )
-      const task = SECTION_ORDER.flatMap(section => current[section]).find(item => item.id === id)
-      if (!task) return current
-      const baseTitle = task.title.replace(/ \(completed \d{4}-\d{2}-\d{2}\)$/, '')
-      const target = done ? 'Done' : 'Now'
-      next[target].push({
-        ...task,
-        title: done ? `${baseTitle} (completed ${new Date().toISOString().slice(0, 10)})` : baseTitle,
-        done,
-        section: target
-      })
-      return next
-    })
-    haptic('success')
+    completeMutation.mutate({ id, done })
   }
 
   return jsxs('div', {
@@ -274,9 +212,7 @@ function TasksPage() {
                   jsx('h1', { className: 'text-base font-semibold text-foreground', children: 'Tasks' }),
                   jsx('p', {
                     className: 'mt-0.5 text-[0.6875rem] text-(--ui-text-quaternary)',
-                    children: demoMode
-                      ? 'Interactive sample board · your real tasks are hidden'
-                      : 'Shared directly with Hermes · tasks.md'
+                    children: 'Shared directly with Hermes · tasks.md'
                   })
                 ]
               }),
@@ -287,12 +223,12 @@ function TasksPage() {
                   jsx(Count, { label: 'priority', value: board.counts.priority }),
                   jsx(Count, { label: 'done', value: board.counts.done }),
                   jsx(Button, {
-                    'aria-label': demoMode ? 'Reset demo tasks' : 'Refresh tasks',
-                    disabled: !demoMode && boardQuery.isFetching,
-                    onClick: () => demoMode ? setDemoSections(freshDemoTasks()) : boardQuery.refetch(),
+                    'aria-label': 'Refresh tasks',
+                    disabled: boardQuery.isFetching,
+                    onClick: () => boardQuery.refetch(),
                     size: 'icon-xs',
                     variant: 'ghost',
-                    children: !demoMode && boardQuery.isFetching
+                    children: boardQuery.isFetching
                       ? jsx(GlyphSpinner, { className: 'size-3.5' })
                       : jsx(Codicon, { name: 'refresh', size: '0.875rem' })
                   })
@@ -300,43 +236,26 @@ function TasksPage() {
               })
             ]
           }),
-          demoMode
-            ? jsxs('div', {
-                className: 'mt-4 flex items-center justify-between rounded-md border border-(--ui-stroke-secondary) bg-(--ui-bg-secondary) px-3 py-2',
-                children: [
-                  jsx('span', {
-                    className: 'text-[0.6875rem] text-(--ui-text-tertiary)',
-                    children: 'Safe sample data for screenshots and demos'
-                  }),
-                  jsx(Button, {
-                    onClick: () => setDemoSections(freshDemoTasks()),
-                    size: 'xs',
-                    type: 'button',
-                    variant: 'text',
-                    children: 'Reset demo'
-                  })
-                ]
-              })
-            : jsxs('form', {
-                className: 'mt-4 flex gap-2',
-                onSubmit: submit,
-                children: [
-                  jsx(Input, {
-                    'aria-label': 'New task',
-                    className: 'min-w-0 flex-1',
-                    disabled: addMutation.isPending,
-                    onChange: event => setTitle(event.target.value),
-                    placeholder: 'Add a concrete next action…',
-                    value: title
-                  }),
-                  jsx(Button, {
-                    disabled: !title.trim() || addMutation.isPending,
-                    size: 'sm',
-                    type: 'submit',
-                    children: addMutation.isPending ? jsx(GlyphSpinner, { className: 'size-3.5' }) : 'Add'
-                  })
-                ]
+          jsxs('form', {
+            className: 'mt-4 flex gap-2',
+            onSubmit: submit,
+            children: [
+              jsx(Input, {
+                'aria-label': 'New task',
+                className: 'min-w-0 flex-1',
+                disabled: addMutation.isPending,
+                onChange: event => setTitle(event.target.value),
+                placeholder: 'Add a concrete next action…',
+                value: title
               }),
+              jsx(Button, {
+                disabled: !title.trim() || addMutation.isPending,
+                size: 'sm',
+                type: 'submit',
+                children: addMutation.isPending ? jsx(GlyphSpinner, { className: 'size-3.5' }) : 'Add'
+              })
+            ]
+          }),
           jsxs('div', {
             className: 'mt-3 flex flex-wrap items-center gap-2',
             children: [

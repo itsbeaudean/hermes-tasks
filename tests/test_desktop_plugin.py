@@ -24,9 +24,6 @@ class DesktopPluginTests(unittest.TestCase):
         self.assertIn("SIDEBAR_NAV_AREA", source)
         self.assertIn("STATUSBAR_AREAS", source)
         self.assertNotIn("action: jsx(Button", source, "ErrorState actions must use children")
-        self.assertIn("DEMO_TASKS", source)
-        self.assertIn("{ id: 'demo', label: 'Demo' }", source)
-        self.assertIn("Ship the native task dashboard", source)
         result = subprocess.run(
             ["node", "--check", str(PLUGIN_PATH)],
             capture_output=True,
@@ -41,6 +38,13 @@ class DesktopPluginTests(unittest.TestCase):
         self.assertIn("const [hideDone, setHideDone] = useState(false)", source)
         self.assertIn("if (hideDone && task.done) return false", source)
         self.assertIn("'aria-label': 'Hide completed tasks'", source)
+
+    def test_plugin_does_not_ship_demo_tasks_or_a_demo_filter(self):
+        source = PLUGIN_PATH.read_text(encoding="utf-8")
+
+        self.assertNotIn("DEMO_TASKS", source)
+        self.assertNotIn("{ id: 'demo', label: 'Demo' }", source)
+        self.assertNotIn("Interactive sample board", source)
 
 
 if __name__ == "__main__":
