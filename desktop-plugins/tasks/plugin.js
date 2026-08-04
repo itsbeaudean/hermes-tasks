@@ -21,7 +21,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  SegmentedControl,
   cn,
   haptic,
   host,
@@ -37,10 +36,6 @@ const QUERY_KEY = [ID, 'board']
 const SECTION_ORDER = ['Next', 'Doing', 'Waiting', 'Done']
 const LATER_SECTION = 'Later'
 const ALL_SECTIONS = [...SECTION_ORDER, LATER_SECTION]
-const VIEW_MODES = [
-  { id: 'live', label: 'Live' },
-  { id: 'demo', label: 'Demo' }
-]
 const SECTION_COPY = {
   Next: { description: 'Committed next actions', icon: 'arrow-right' },
   Doing: { description: 'In progress', icon: 'pulse' },
@@ -48,20 +43,6 @@ const SECTION_COPY = {
   Done: { description: 'Recently completed', icon: 'check-all' },
   Later: { description: 'Uncommitted options', icon: 'archive' }
 }
-const DEMO_TASKS = [
-  { id: 'demo-01', title: 'Ship Tasks V2', section: 'Doing', area: 'creative', priority: true },
-  { id: 'demo-02', title: 'Review the release checklist', section: 'Doing', area: 'work', priority: false },
-  { id: 'demo-03', title: 'Record a short click-through', section: 'Next', area: 'creative', priority: true },
-  { id: 'demo-04', title: 'Write the GitHub release notes', section: 'Next', area: 'work', priority: false },
-  { id: 'demo-05', title: 'Book the dentist appointment', section: 'Next', area: 'life', priority: false },
-  { id: 'demo-06', title: 'Confirm feedback from the tester', section: 'Waiting', area: 'work', priority: false },
-  { id: 'demo-07', title: 'Wait for the icon export', section: 'Waiting', area: 'creative', priority: false },
-  { id: 'demo-08', title: 'Explore a weekly review', section: 'Later', area: 'life', priority: false },
-  { id: 'demo-09', title: 'Add keyboard shortcuts', section: 'Later', area: 'creative', priority: false },
-  { id: 'demo-10', title: 'Choose the personal workflow', section: 'Done', area: 'life', priority: false, done: true, completed_at: '2026-08-03' },
-  { id: 'demo-11', title: 'Keep tasks.md as the source of truth', section: 'Done', area: 'work', priority: true, done: true, completed_at: '2026-08-03' },
-  { id: 'demo-12', title: 'Build the atomic mutation backend', section: 'Done', area: 'work', priority: false, done: true, completed_at: '2026-08-03' }
-]
 let pluginContext = null
 
 function request(path, options) {
@@ -110,22 +91,6 @@ function recalculateBoard(input) {
   }
 }
 
-function createDemoBoard() {
-  const sections = emptySections()
-  for (const item of DEMO_TASKS) {
-    sections[item.section].push({
-      ...item,
-      done: item.section === 'Done' || Boolean(item.done),
-      completed_at: item.completed_at || null
-    })
-  }
-  return recalculateBoard({
-    sections,
-    areas: ['work', 'life', 'creative'],
-    doing_limit: 3,
-    revision: 'demo'
-  })
-}
 
 function updateBoardLocally(board, id, patch) {
   const sections = emptySections()
@@ -162,11 +127,6 @@ function updateBoardLocally(board, id, patch) {
   return recalculateBoard({ ...board, sections })
 }
 
-function addBoardTask(board, task) {
-  const sections = Object.fromEntries(ALL_SECTIONS.map(section => [section, [...(board.sections?.[section] || [])]]))
-  sections[task.section].push(task)
-  return recalculateBoard({ ...board, sections, areas: [...(board.areas || []), task.area].filter(Boolean) })
-}
 
 function createAreaLocally(board, name) {
   const area = normalizeAreaName(name)
@@ -762,8 +722,6 @@ function TasksPage() {
   const boardQuery = useBoard()
   const addInputRef = useRef(null)
   const searchInputRef = useRef(null)
-  const [mode, setMode] = useState('live')
-  const [demoBoard, setDemoBoard] = useState(createDemoBoard)
   const [title, setTitle] = useState('')
   const [newArea, setNewArea] = useState('')
   const [newPriority, setNewPriority] = useState(false)
@@ -797,8 +755,7 @@ function TasksPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  const liveBoard = boardQuery.data
-  const board = mode === 'demo' ? demoBoard : liveBoard
+  const board = boardQuery.data
 
   const toggleCollapsed = section => {
     setCollapsedSections(current => {
@@ -924,21 +881,11 @@ function TasksPage() {
     if (!board || busy) return false
     let requestStarted = false
     try {
-      const nextBoard = operation.type === 'create'
+      operation.type === 'create'
         ? createAreaLocally(board, operation.name)
         : operation.type === 'rename'
           ? renameAreaLocally(board, operation.area, operation.name)
           : removeAreaLocally(board, operation.area, operation.replacement)
-      if (mode === 'demo') {
-        setDemoBoard(nextBoard)
-        if (filter === operation.area) {
-          setFilter(operation.type === 'rename'
-            ? normalizeAreaName(operation.name)
-            : operation.replacement || 'all')
-        }
-        haptic('success')
-        return true
-      }
       requestStarted = true
       await areaMutation.mutateAsync({ ...operation, revision: board.revision })
       return true
@@ -950,13 +897,6 @@ function TasksPage() {
 
   const mutateTask = (id, patch) => {
     if (!board || busy) return
-    if (mode === 'demo') {
-      setDemoBoard(current => updateBoardLocally(current, id, patch))
-      setDraft(null)
-      setDeleteArmed(false)
-      haptic('success')
-      return
-    }
     updateMutation.mutate({ id, patch, revision: board.revision })
   }
 
@@ -964,13 +904,6 @@ function TasksPage() {
     if (!board || busy) return
     if (!deleteArmed) {
       setDeleteArmed(true)
-      return
-    }
-    if (mode === 'demo') {
-      setDemoBoard(current => updateBoardLocally(current, id, { __delete: true }))
-      setDraft(null)
-      setDeleteArmed(false)
-      haptic('success')
       return
     }
     deleteMutation.mutate({ id, revision: board.revision })
@@ -981,22 +914,6 @@ function TasksPage() {
     const clean = title.trim()
     if (!clean || !board || busy) return
     const area = normalizeAreaName(newArea)
-    if (mode === 'demo') {
-      const task = {
-        id: `demo-user-${Date.now()}`,
-        title: clean,
-        section: addSection,
-        area: area || null,
-        priority: newPriority,
-        done: false,
-        completed_at: null
-      }
-      setDemoBoard(current => addBoardTask(current, task))
-      setTitle('')
-      setNewPriority(false)
-      haptic('success')
-      return
-    }
     addMutation.mutate({
       title: clean,
       section: addSection,
@@ -1050,23 +967,17 @@ function TasksPage() {
     return Object.fromEntries(ALL_SECTIONS.map(section => [section, (board.sections?.[section] || []).filter(matches)]))
   }, [board, filter, search])
 
-  if (mode === 'live' && boardQuery.isLoading) {
+  if (boardQuery.isLoading) {
     return jsx('div', { className: 'flex h-full items-center justify-center', children: jsx(GlyphSpinner, { className: 'size-5' }) })
   }
 
-  if (mode === 'live' && boardQuery.isError) {
+  if (boardQuery.isError) {
     return jsx('div', {
       className: 'flex h-full items-center justify-center p-6',
       children: jsx(ErrorState, {
         title: 'Tasks unavailable',
         description: boardQuery.error instanceof Error ? boardQuery.error.message : 'The task backend could not be reached.',
-        children: jsxs('div', {
-          className: 'flex gap-2',
-          children: [
-            jsx(Button, { size: 'sm', onClick: () => boardQuery.refetch(), children: 'Retry' }),
-            jsx(Button, { size: 'sm', variant: 'secondary', onClick: () => setMode('demo'), children: 'Open demo' })
-          ]
-        })
+        children: jsx(Button, { size: 'sm', onClick: () => boardQuery.refetch(), children: 'Retry' })
       })
     })
   }
@@ -1087,13 +998,7 @@ function TasksPage() {
               jsxs('div', {
                 className: 'min-w-0',
                 children: [
-                  jsxs('div', {
-                    className: 'flex items-center gap-2',
-                    children: [
-                      jsx('h1', { className: 'text-base font-semibold text-foreground', children: 'Tasks' }),
-                      mode === 'demo' ? jsx('span', { className: 'rounded bg-(--ui-accent)/10 px-1.5 py-0.5 text-[0.625rem] text-(--ui-accent)', children: 'isolated demo' }) : null
-                    ]
-                  }),
+                  jsx('h1', { className: 'text-base font-semibold text-foreground', children: 'Tasks' }),
                   jsx('p', {
                     className: 'mt-0.5 truncate text-[0.6875rem] text-(--ui-text-quaternary)',
                     children: focusTask ? `${focusTask.section === 'Doing' ? 'Focus' : 'Up next'} · ${focusTask.title}` : 'One board. Two operators. Plain Markdown.'
@@ -1106,14 +1011,7 @@ function TasksPage() {
                   jsx(Count, { label: 'open', value: board.counts.open, strong: true }),
                   jsx(Count, { label: 'doing', value: board.wip.count }),
                   jsx(Count, { label: 'waiting', value: board.waiting_count }),
-                  jsx(SegmentedControl, { onChange: setMode, options: VIEW_MODES, value: mode }),
-                  mode === 'demo' ? jsx(Button, {
-                    onClick: () => setDemoBoard(createDemoBoard()),
-                    size: 'xs',
-                    type: 'button',
-                    variant: 'ghost',
-                    children: 'Reset demo'
-                  }) : jsx(Button, {
+                  jsx(Button, {
                     'aria-label': 'Refresh tasks',
                     disabled: boardQuery.isFetching,
                     onClick: () => boardQuery.refetch(),

@@ -7,6 +7,7 @@ import unittest
 
 
 PLUGIN_PATH = Path(__file__).resolve().parents[1] / "desktop-plugins" / "tasks" / "plugin.js"
+README_PATH = Path(__file__).resolve().parents[1] / "README.md"
 
 
 class DesktopPluginTests(unittest.TestCase):
@@ -62,10 +63,8 @@ class DesktopPluginTests(unittest.TestCase):
         self.assertIn("sourcePosition < targetPosition", source)
         self.assertIn("event.key === '/'", source)
         self.assertIn("event.key.toLowerCase() === 'n'", source)
-        self.assertIn("DEMO_TASKS", source)
-        self.assertIn("{ id: 'demo', label: 'Demo' }", source)
-        self.assertIn("Reset demo", source)
-        self.assertIn("Ship Tasks V2", source)
+        self.assertNotRegex(source.lower(), r"\bdemo\b")
+        self.assertNotIn("SegmentedControl", source)
         result = subprocess.run(
             ["node", "--check", str(PLUGIN_PATH)],
             capture_output=True,
@@ -74,11 +73,15 @@ class DesktopPluginTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_demo_area_operations_and_drop_positions_match_live_semantics(self):
+    def test_public_area_operations_and_drop_positions_preserve_board_semantics(self):
         source = PLUGIN_PATH.read_text(encoding="utf-8")
         helpers = source[source.index("const SECTION_ORDER"):source.index("function useBoard")]
         assertions = r"""
-const original = createDemoBoard()
+const sections = emptySections()
+sections.Next.push({ id: 'a', title: 'Plan', section: 'Next', area: 'work', priority: false, done: false })
+sections.Doing.push({ id: 'b', title: 'Build', section: 'Doing', area: 'creative', priority: true, done: false })
+sections.Later.push({ id: 'c', title: 'Consider', section: 'Later', area: 'life', priority: false, done: false })
+const original = recalculateBoard({ sections, areas: ['work', 'creative', 'life'], doing_limit: 3, revision: 'test' })
 const originalJson = JSON.stringify(original)
 const created = createAreaLocally(original, '  Client Success  ')
 if (!created.areas.includes('client-success')) throw new Error('custom area was not normalized')
@@ -92,18 +95,18 @@ const renamed = renameAreaLocally(created, 'work', 'Business Ops')
 if (renamed.areas.includes('work') || !renamed.areas.includes('business-ops')) throw new Error('area registry rename failed')
 const renamedTasks = ALL_SECTIONS.flatMap(section => renamed.sections[section])
 if (renamedTasks.some(task => task.area === 'work')) throw new Error('task area rename failed')
-if (renamedTasks.length !== DEMO_TASKS.length) throw new Error('rename changed the task count')
+if (renamedTasks.length !== 3) throw new Error('rename changed the task count')
 
 const reassigned = removeAreaLocally(renamed, 'life', 'business-ops')
 const reassignedTasks = ALL_SECTIONS.flatMap(section => reassigned.sections[section])
 if (reassignedTasks.some(task => task.area === 'life')) throw new Error('area reassignment failed')
-if (reassignedTasks.length !== DEMO_TASKS.length) throw new Error('reassignment changed the task count')
+if (reassignedTasks.length !== 3) throw new Error('reassignment changed the task count')
 
 const cleared = removeAreaLocally(reassigned, 'creative', null)
 const clearedTasks = ALL_SECTIONS.flatMap(section => cleared.sections[section])
 if (clearedTasks.some(task => task.area === 'creative')) throw new Error('area clear failed')
 if (!clearedTasks.some(task => task.area === null)) throw new Error('area clear did not preserve unassigned tasks')
-if (clearedTasks.length !== DEMO_TASKS.length) throw new Error('area clear changed the task count')
+if (clearedTasks.length !== 3) throw new Error('area clear changed the task count')
 
 const cards = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
 if (dropPosition(cards, 'a', 'd') !== 2) throw new Error('forward drop position is wrong')
@@ -116,6 +119,11 @@ if (dropPosition(cards, 'd', 'b') !== 1) throw new Error('backward drop position
             check=False,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_public_readme_does_not_advertise_the_private_demo(self):
+        readme = README_PATH.read_text(encoding="utf-8")
+        self.assertNotRegex(readme.lower(), r"\bdemo\b")
+        self.assertNotIn("hermes-tasks-v2-demo", readme)
 
 
 if __name__ == "__main__":

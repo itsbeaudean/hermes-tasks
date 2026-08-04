@@ -16,10 +16,6 @@ There is no account, sync service, database, or proprietary format to remain com
 
 ![Hermes Desktop plugin](https://img.shields.io/badge/Hermes-Desktop%20plugin-6d5efc)
 
-![Hermes Tasks V2 board in isolated Demo mode](assets/hermes-tasks-v2-demo.png)
-
-*The complete five-stage board in isolated Demo mode, with user-defined area filters and `Later` folded into a drop-ready rail.*
-
 ## What it does
 
 - Uses the workflow `Next → Doing → Waiting → Done`, with a quiet `Later` lane
@@ -49,7 +45,6 @@ There is no account, sync service, database, or proprietary format to remain com
 | Soft WIP guidance | See when **Doing** exceeds its configurable limit without being blocked from making the choice. |
 | Stable identity and ordering | Task IDs survive edits, moves, area changes, and reordering. Revision checks prevent stale writes from silently winning. |
 | Explicit **Ask Hermes** | Send one task's context to Hermes only when you choose. Opening or selecting a task never silently starts an agent. |
-| Live and Demo modes | Work with the real Markdown board or safely explore the interface in an isolated demo that cannot alter your task file. |
 | Plain-Markdown source | Read or edit `tasks.md` with any text editor. There is no hosted account, database, or proprietary task store. |
 | Desktop integration | Open Tasks from the Hermes sidebar or its compact status-bar count. Keyboard shortcuts focus search (`/`) and new-task entry (`N`). |
 | Safe concurrent changes | Atomic writes, stable revisions, and process-safe locking protect the file when Desktop and Hermes both operate on it. |
@@ -113,7 +108,7 @@ Removing an area never deletes tasks and never changes their workflow status. If
 - another existing area to reassign them to, or
 - **No area** to keep the tasks unassigned.
 
-Clearing an area from affected tasks requires an explicit confirmation. The same rules apply in Live and Demo modes; Demo changes stay isolated from your real task file.
+Clearing an area from affected tasks requires an explicit confirmation.
 
 ## Your task file
 
