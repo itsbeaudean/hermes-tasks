@@ -16,6 +16,10 @@ There is no account, sync service, database, or proprietary format to remain com
 
 ![Hermes Desktop plugin](https://img.shields.io/badge/Hermes-Desktop%20plugin-6d5efc)
 
+![Hermes Tasks V2 personal Kanban board](assets/hermes-tasks-v2.png)
+
+*The five-stage board with user-defined area filters and `Later` folded into a drop-ready rail.*
+
 ## What it does
 
 - Uses the workflow `Next → Doing → Waiting → Done`, with a quiet `Later` lane
