@@ -10,7 +10,7 @@ PLUGIN_PATH = Path(__file__).resolve().parents[1] / "desktop-plugins" / "tasks" 
 
 
 class DesktopPluginTests(unittest.TestCase):
-    def test_native_tasks_plugin_has_valid_disk_plugin_shape(self):
+    def test_native_tasks_v2_plugin_has_valid_disk_plugin_shape(self):
         self.assertTrue(PLUGIN_PATH.exists(), "desktop task plugin is not implemented")
         source = PLUGIN_PATH.read_text(encoding="utf-8")
         imports = re.findall(r"from\s+['\"]([^'\"]+)['\"]", source)
@@ -24,6 +24,48 @@ class DesktopPluginTests(unittest.TestCase):
         self.assertIn("SIDEBAR_NAV_AREA", source)
         self.assertIn("STATUSBAR_AREAS", source)
         self.assertNotIn("action: jsx(Button", source, "ErrorState actions must use children")
+        self.assertIn("const SECTION_ORDER = ['Next', 'Doing', 'Waiting', 'Done']", source)
+        self.assertIn("const LATER_SECTION = 'Later'", source)
+        self.assertIn("draggable: task.section !== 'Done'", source)
+        self.assertIn("dataTransfer.setData('text/plain'", source)
+        self.assertIn("section === 'Done' ? {} : { position }", source)
+        self.assertIn("canonicalTasks.findIndex", source)
+        self.assertIn("sourcePosition", source)
+        self.assertIn("await queryClient.cancelQueries({ queryKey: QUERY_KEY })", source)
+        self.assertIn("queryClient.invalidateQueries({ queryKey: QUERY_KEY })", source)
+        self.assertIn("method: 'PATCH'", source)
+        self.assertIn("method: 'DELETE'", source)
+        self.assertIn("revision", source)
+        self.assertIn("board.areas", source)
+        self.assertIn("doing_limit", source)
+        self.assertIn("Ask Hermes", source)
+        self.assertIn("prompt.submit", source)
+        self.assertIn("DialogDescription", source)
+        self.assertIn("group-focus-within:opacity-100", source)
+        self.assertIn("collapsedSections", source)
+        self.assertIn("onToggleCollapsed", source)
+        self.assertIn("aria-expanded", source)
+        self.assertIn("[writing-mode:vertical-rl]", source)
+        self.assertIn("function AreaManager", source)
+        self.assertIn("Manage areas", source)
+        self.assertIn("request('/areas'", source)
+        self.assertIn("replacement", source)
+        self.assertIn("renameAreaLocally", source)
+        self.assertIn("removeAreaLocally", source)
+        self.assertGreaterEqual(source.count("await queryClient.cancelQueries({ queryKey: QUERY_KEY })"), 4)
+        self.assertIn("areaMutation.mutateAsync", source)
+        self.assertIn("let requestStarted = false", source)
+        self.assertIn("if (!requestStarted)", source)
+        self.assertIn("if (saved)", source)
+        self.assertIn("Confirm clear & remove", source)
+        self.assertIn("function dropPosition", source)
+        self.assertIn("sourcePosition < targetPosition", source)
+        self.assertIn("event.key === '/'", source)
+        self.assertIn("event.key.toLowerCase() === 'n'", source)
+        self.assertIn("DEMO_TASKS", source)
+        self.assertIn("{ id: 'demo', label: 'Demo' }", source)
+        self.assertIn("Reset demo", source)
+        self.assertIn("Ship Tasks V2", source)
         result = subprocess.run(
             ["node", "--check", str(PLUGIN_PATH)],
             capture_output=True,
@@ -32,19 +74,48 @@ class DesktopPluginTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
-    def test_done_tasks_can_be_hidden_without_changing_the_active_filter(self):
+    def test_demo_area_operations_and_drop_positions_match_live_semantics(self):
         source = PLUGIN_PATH.read_text(encoding="utf-8")
+        helpers = source[source.index("const SECTION_ORDER"):source.index("function useBoard")]
+        assertions = r"""
+const original = createDemoBoard()
+const originalJson = JSON.stringify(original)
+const created = createAreaLocally(original, '  Client Success  ')
+if (!created.areas.includes('client-success')) throw new Error('custom area was not normalized')
+if (JSON.stringify(original) !== originalJson) throw new Error('area creation mutated its input')
 
-        self.assertIn("const [hideDone, setHideDone] = useState(false)", source)
-        self.assertIn("if (hideDone && task.done) return false", source)
-        self.assertIn("'aria-label': 'Hide completed tasks'", source)
+let duplicateRejected = false
+try { createAreaLocally(created, 'CLIENT SUCCESS') } catch (_error) { duplicateRejected = true }
+if (!duplicateRejected) throw new Error('duplicate normalized area was accepted')
 
-    def test_plugin_does_not_ship_demo_tasks_or_a_demo_filter(self):
-        source = PLUGIN_PATH.read_text(encoding="utf-8")
+const renamed = renameAreaLocally(created, 'work', 'Business Ops')
+if (renamed.areas.includes('work') || !renamed.areas.includes('business-ops')) throw new Error('area registry rename failed')
+const renamedTasks = ALL_SECTIONS.flatMap(section => renamed.sections[section])
+if (renamedTasks.some(task => task.area === 'work')) throw new Error('task area rename failed')
+if (renamedTasks.length !== DEMO_TASKS.length) throw new Error('rename changed the task count')
 
-        self.assertNotIn("DEMO_TASKS", source)
-        self.assertNotIn("{ id: 'demo', label: 'Demo' }", source)
-        self.assertNotIn("Interactive sample board", source)
+const reassigned = removeAreaLocally(renamed, 'life', 'business-ops')
+const reassignedTasks = ALL_SECTIONS.flatMap(section => reassigned.sections[section])
+if (reassignedTasks.some(task => task.area === 'life')) throw new Error('area reassignment failed')
+if (reassignedTasks.length !== DEMO_TASKS.length) throw new Error('reassignment changed the task count')
+
+const cleared = removeAreaLocally(reassigned, 'creative', null)
+const clearedTasks = ALL_SECTIONS.flatMap(section => cleared.sections[section])
+if (clearedTasks.some(task => task.area === 'creative')) throw new Error('area clear failed')
+if (!clearedTasks.some(task => task.area === null)) throw new Error('area clear did not preserve unassigned tasks')
+if (clearedTasks.length !== DEMO_TASKS.length) throw new Error('area clear changed the task count')
+
+const cards = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
+if (dropPosition(cards, 'a', 'd') !== 2) throw new Error('forward drop position is wrong')
+if (dropPosition(cards, 'd', 'b') !== 1) throw new Error('backward drop position is wrong')
+"""
+        result = subprocess.run(
+            ["node", "--input-type=module", "--eval", helpers + assertions],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

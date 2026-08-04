@@ -1,7 +1,7 @@
 {
   "name": "tasks",
   "label": "Tasks",
-  "description": "Local Markdown task board for Hermes Desktop.",
-  "version": "1.0.0",
+  "description": "Minimal personal Kanban shared by the user and Hermes through tasks.md.",
+  "version": "2.0.0",
   "api": "plugin_api.py"
 }

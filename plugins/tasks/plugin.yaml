@@ -1,4 +1,4 @@
 name: tasks
-version: "1.0.0"
-description: "Local Markdown task board for Hermes Desktop."
-author: "Hermes Tasks contributors"
+version: "2.0.0"
+description: "Minimal personal Kanban shared by the user and Hermes through tasks.md."
+author: "Beau Dean / Hermes Agent"

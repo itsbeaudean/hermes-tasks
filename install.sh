@@ -10,22 +10,19 @@ if ! command -v hermes >/dev/null 2>&1; then
   exit 1
 fi
 
-install -d "$HERMES_HOME/desktop-plugins/tasks"
-install -d "$HERMES_HOME/plugins/tasks/dashboard"
-
-install -m 0644 "$REPO_ROOT/desktop-plugins/tasks/plugin.js" "$HERMES_HOME/desktop-plugins/tasks/plugin.js"
-install -m 0644 "$REPO_ROOT/plugins/tasks/plugin.yaml" "$HERMES_HOME/plugins/tasks/plugin.yaml"
-install -m 0644 "$REPO_ROOT/plugins/tasks/dashboard/manifest.json" "$HERMES_HOME/plugins/tasks/dashboard/manifest.json"
-install -m 0644 "$REPO_ROOT/plugins/tasks/dashboard/plugin_api.py" "$HERMES_HOME/plugins/tasks/dashboard/plugin_api.py"
-
 if [[ ! -e "$TASK_FILE" ]]; then
   install -d "$(dirname "$TASK_FILE")"
-  cat >"$TASK_FILE" <<'EOF'
+  cat >"$TASK_FILE" <<EOF
 # Tasks
 
-Updated: 2026-08-02
+Areas: work, life
+Doing limit: 3
 
-## Now
+Updated: $(date +%F)
+
+## Next
+
+## Doing
 
 ## Waiting
 
@@ -34,7 +31,52 @@ Updated: 2026-08-02
 ## Done
 EOF
   printf 'Created %s\n' "$TASK_FILE"
+else
+  HERMES_TASKS_PATH="$TASK_FILE" TASKS_PLUGIN_API="$REPO_ROOT/plugins/tasks/dashboard/plugin_api.py" python3 <<'PY'
+import importlib.util
+import os
+from pathlib import Path
+import re
+import shutil
+from datetime import datetime
+
+module_path = Path(os.environ["TASKS_PLUGIN_API"])
+task_path = Path(os.environ["HERMES_TASKS_PATH"])
+spec = importlib.util.spec_from_file_location("hermes_tasks_install", module_path)
+if spec is None or spec.loader is None:
+    raise RuntimeError("Could not load the Tasks migration module")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+markdown = task_path.read_text(encoding="utf-8")
+parsed = module.parse_board(markdown)
+needs_migration = (
+    re.search(r"(?m)^## Now[ \t]*\r?$", markdown) is not None
+    or not module.AREAS_LINE_RE.search(markdown)
+    or not module.DOING_LIMIT_RE.search(markdown)
+    or not any(line.strip() == "## Doing" for line in markdown.splitlines())
+    or any(
+        not module.TASK_ID_RE.search(task["raw_title"])
+        for tasks in parsed["sections"].values()
+        for task in tasks
+    )
+)
+if needs_migration:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    backup = task_path.with_name(f"{task_path.name}.pre-v2-{stamp}.bak")
+    shutil.copy2(task_path, backup)
+    module.TaskStore(task_path).migrate()
+    print(f"Migrated {task_path} to Tasks V2 (backup: {backup})")
+PY
 fi
+
+install -d "$HERMES_HOME/desktop-plugins/tasks"
+install -d "$HERMES_HOME/plugins/tasks/dashboard"
+
+install -m 0644 "$REPO_ROOT/desktop-plugins/tasks/plugin.js" "$HERMES_HOME/desktop-plugins/tasks/plugin.js"
+install -m 0644 "$REPO_ROOT/plugins/tasks/plugin.yaml" "$HERMES_HOME/plugins/tasks/plugin.yaml"
+install -m 0644 "$REPO_ROOT/plugins/tasks/dashboard/manifest.json" "$HERMES_HOME/plugins/tasks/dashboard/manifest.json"
+install -m 0644 "$REPO_ROOT/plugins/tasks/dashboard/plugin_api.py" "$HERMES_HOME/plugins/tasks/dashboard/plugin_api.py"
 
 HERMES_HOME="$HERMES_HOME" hermes plugins enable tasks --no-allow-tool-override
 
@@ -42,4 +84,4 @@ printf '\nInstalled Tasks for Hermes Desktop.\n'
 printf '1. Fully quit and reopen Hermes Desktop so the task backend is mounted.\n'
 printf '2. Open Hermes Desktop and run "Reload desktop plugins" from the command palette if Tasks does not appear.\n'
 printf '3. Your task file is %s\n' "$TASK_FILE"
-printf '\nTo use a different file, set HERMES_TASKS_PATH in the environment that starts your Hermes gateway, then restart it.\n'
+printf '\nTo use a different file, set HERMES_TASKS_PATH in the environment that starts your Hermes backend, then restart it.\n'
