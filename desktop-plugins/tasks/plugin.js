@@ -62,6 +62,12 @@ function normalizeAreaName(value) {
     .replace(/^[-_]+|[-_]+$/g, '')
 }
 
+function areaForNewTask(value, filter) {
+  const explicitArea = normalizeAreaName(value)
+  if (explicitArea) return explicitArea
+  return filter !== 'all' && filter !== 'priority' ? normalizeAreaName(filter) : ''
+}
+
 function recalculateBoard(input) {
   const sections = emptySections()
   for (const section of ALL_SECTIONS) {
@@ -803,6 +809,7 @@ function TasksPage() {
     onSuccess: nextBoard => {
       queryClient.setQueryData(QUERY_KEY, nextBoard)
       setTitle('')
+      setNewArea('')
       setNewPriority(false)
       haptic('success')
     },
@@ -913,7 +920,7 @@ function TasksPage() {
     event.preventDefault()
     const clean = title.trim()
     if (!clean || !board || busy) return
-    const area = normalizeAreaName(newArea)
+    const area = areaForNewTask(newArea, filter)
     addMutation.mutate({
       title: clean,
       section: addSection,
@@ -1098,6 +1105,8 @@ function TasksPage() {
             pendingId,
             onAddHere: nextSection => {
               setAddSection(nextSection)
+              const filteredArea = areaForNewTask('', filter)
+              if (filteredArea) setNewArea(filteredArea)
               addInputRef.current?.focus()
             },
             onComplete: (task, done) => mutateTask(task.id, { section: done ? 'Done' : 'Next' }),

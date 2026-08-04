@@ -63,7 +63,9 @@ class DesktopPluginTests(unittest.TestCase):
         self.assertIn("sourcePosition < targetPosition", source)
         self.assertIn("event.key === '/'", source)
         self.assertIn("event.key.toLowerCase() === 'n'", source)
-        self.assertIn("onAddHere: nextSection => {\n              setAddSection(nextSection)\n              addInputRef.current?.focus()\n            }", source)
+        self.assertIn("const filteredArea = areaForNewTask('', filter)", source)
+        self.assertIn("if (filteredArea) setNewArea(filteredArea)", source)
+        self.assertIn("setNewArea('')", source)
         self.assertNotRegex(source.lower(), r"\bdemo\b")
         self.assertNotIn("SegmentedControl", source)
         result = subprocess.run(
@@ -112,6 +114,11 @@ if (clearedTasks.length !== 3) throw new Error('area clear changed the task coun
 const cards = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
 if (dropPosition(cards, 'a', 'd') !== 2) throw new Error('forward drop position is wrong')
 if (dropPosition(cards, 'd', 'b') !== 1) throw new Error('backward drop position is wrong')
+
+if (areaForNewTask('', 'work') !== 'work') throw new Error('active area filter was not inherited')
+if (areaForNewTask('', 'all') !== '') throw new Error('all filter became an area')
+if (areaForNewTask('', 'priority') !== '') throw new Error('priority filter became an area')
+if (areaForNewTask(' Client Success ', 'work') !== 'client-success') throw new Error('explicit area was not preserved')
 """
         result = subprocess.run(
             ["node", "--input-type=module", "--eval", helpers + assertions],
