@@ -63,6 +63,7 @@ class DesktopPluginTests(unittest.TestCase):
         self.assertIn("sourcePosition < targetPosition", source)
         self.assertIn("event.key === '/'", source)
         self.assertIn("event.key.toLowerCase() === 'n'", source)
+        self.assertIn("onAddHere: nextSection => {\n              setAddSection(nextSection)\n              addInputRef.current?.focus()\n            }", source)
         self.assertNotRegex(source.lower(), r"\bdemo\b")
         self.assertNotIn("SegmentedControl", source)
         result = subprocess.run(

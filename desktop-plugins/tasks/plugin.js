@@ -1096,7 +1096,10 @@ function TasksPage() {
             doingLimit: board.doing_limit,
             dragOver: dragOver === section,
             pendingId,
-            onAddHere: nextSection => setAddSection(nextSection),
+            onAddHere: nextSection => {
+              setAddSection(nextSection)
+              addInputRef.current?.focus()
+            },
             onComplete: (task, done) => mutateTask(task.id, { section: done ? 'Done' : 'Next' }),
             onDropTask: (id, nextSection, placement = {}) => mutateTask(id, { section: nextSection, ...placement }),
             onOpen: openTask,
