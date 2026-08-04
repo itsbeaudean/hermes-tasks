@@ -107,6 +107,10 @@ The `Doing` limit is guidance, not a hard blocker.
 
 Open **Manage areas** to create, rename, or remove areas. Names are normalized consistently, and duplicate normalized names are rejected.
 
+![Hermes Tasks area management](assets/hermes-tasks-area-management.png)
+
+*Areas are user-defined labels for grouping and filtering tasks. The manager shows how many tasks use each area and lets you add, rename, or remove areas without changing workflow status.*
+
 Removing an area never deletes tasks and never changes their workflow status. If tasks use that area, choose either:
 
 - another existing area to reassign them to, or
